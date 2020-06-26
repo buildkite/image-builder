@@ -120,12 +120,27 @@ Resources:
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      AvailabilityZone: !Select [ 0, { Fn::GetAZs: !Ref AWS::Region } ]
       CidrBlock: 10.0.0.0/24
       VpcId: !Ref Vpc
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable bootstrap instance egress.
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - Description: Egress to any IPv4
+          IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+        - Description: Egress to any IPv6
+          IpProtocol: -1
+          CidrIpv6: ::/0
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
   Infrastructure:
     Type: AWS::ImageBuilder::InfrastructureConfiguration
     Properties:
@@ -134,6 +149,8 @@ Resources:
       InstanceTypes:
         - !Ref InstanceType
       SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !GetAtt SecurityGroup.GroupId
       TerminateInstanceOnFailure: true
       SnsTopicArn: !Ref PipelineTopic
 
