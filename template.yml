@@ -17,13 +17,17 @@ Parameters:
     Type: String
     Description: AMI customisation script, downloaded and executed as part of the image build.
 
+  InstanceType:
+    Type: String
+    Description: Instance type for the Image Builder instances.
+
 Conditions:
   HasSecrets:
     !Not [ !Equals [ !Ref SecretsBucket, "" ]]
 
 Resources:
   # IAM role for the image builder instance
-  Role:
+  InstanceRole:
     Type: AWS::IAM::Role
     Properties:
       ManagedPolicyArns:
@@ -85,10 +89,26 @@ Resources:
                     - echo removing secrets
 
   # Recipe of the base image + component
-  Recipe: {}
+  Recipe:
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      Name: !Sub "${AWS::StackName}-Recipe"
+      Components:
+        - ComponentArn: !Ref Component
+      ParentImage: !Ref BaseAMi
+      Version: "0.1.0"
 
   # Publicly routable subnet (route table 0.0.0.0/0 -> igw) in a vpc
-  Infrastructure: {}
+  Infrastructure:
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      Name: !Sub "${AWS::StackName}-Infrastructure"
+      InstanceProfileName: !Ref InstanceProfile
+      InstanceTypes:
+        - !Ref InstanceType
+      SubnetId: !Ref PublicSubnet
+      TerminateInstanceOnFailure: true
+      SnsTopicArn: !Ref PipelineTopic
 
   # Copy to this region only
   Distribution: {}
