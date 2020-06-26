@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  BaseAmi:
+    Type: AWS::EC2::Image::Id
+    Description: Base AMI to build intermediate images on top of.
+    # TODO this is regional, hard coded us-east-1 for now. Perhaps an SSM
+    # input parameter for this stack is best here?
+    Default: ami-0742dbb6cdf78ac94
+
+  SecretsBucket:
+    Type: String
+    Description: Optional – Buildkite elastic-ci stack secrets bucket.
+    Default: ""
+
+  BootstrapScriptUrl:
+    Type: String
+    Description: AMI customisation script, downloaded and executed as part of the image build.
+
+Conditions:
+  HasSecrets:
+    !Not [ !Equals [ !Ref SecretsBucket, "" ]]
+
+Resources:
+  # IAM role for the image builder instance
+  Role: {}
+
+  # Component that optionally syncs the SecretsBucket, downloads and executes
+  # the script, and cleans up the secrets bucket cache
+  Component: {}
+
+  # Recipe of the base image + component
+  Recipe: {}
+
+  # Publicly routable subnet (route table 0.0.0.0/0 -> igw) in a vpc
+  Infrastructure: {}
+
+  # Copy to this region only
+  Distribution: {}
+
+  # Composition of the above elements
+  Pipeline: {}
+
+  # Topic for the pipeline to notify
+  PipelineTopic: {}
+  # Lambda that receives notifications from the pipeline sns topic
+  BuiltLambda: {}
+  # Output parameter that is updated for builds from the pipeline
+  OutputParameter: {}
+  # Output topic that is notified for each modification to the output parameter
+  OutputTopic: {}
+
+Outputs: {}
