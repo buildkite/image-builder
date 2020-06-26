@@ -155,7 +155,12 @@ Resources:
       SnsTopicArn: !Ref PipelineTopic
 
   # Copy to this region only
-  Distribution: {}
+  Distribution:
+    Type: AWS::ImageBuilder::DistributionConfiguration
+    Properties:
+      Name: !Sub "${AWS::StackName}-Distribution"
+      Distributions:
+        - Region: !Ref AWS::Region
 
   # Composition of the above elements
   Pipeline: {}
