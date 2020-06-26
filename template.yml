@@ -23,7 +23,28 @@ Conditions:
 
 Resources:
   # IAM role for the image builder instance
-  Role: {}
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder
+      Policies:
+        - !If
+            - HasSecrets
+            - PolicyName: SecretsBucketAccess
+              PolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                  - Effect: Allow
+                    Action:
+                      - s3:Get*
+                      - s3:Get
+                      - s3:List*
+                    Resource:
+                      - !Sub "arn:aws:s3:::${SecretsBucket}/*"
+                      - !Sub "arn:aws:s3:::${SecretsBucket}"
+            - !Ref AWS::NoValue
 
   # Component that optionally syncs the SecretsBucket, downloads and executes
   # the script, and cleans up the secrets bucket cache
