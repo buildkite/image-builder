@@ -45,10 +45,44 @@ Resources:
                       - !Sub "arn:aws:s3:::${SecretsBucket}/*"
                       - !Sub "arn:aws:s3:::${SecretsBucket}"
             - !Ref AWS::NoValue
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
 
   # Component that optionally syncs the SecretsBucket, downloads and executes
   # the script, and cleans up the secrets bucket cache
-  Component: {}
+  Component:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Name: !Sub "${AWS::StackName}-Bootstrap"
+      Platform: Linux
+      Version: '0.1.0'
+      Description: Optionally fetch an S3 SecretsBucket, and execute a bootstrap script.
+      Data: |
+        name: BootstrapAmi
+        description: Optionally fetch an S3 SecretsBucket, and execute a bootstrap script.
+        schemaVersion: 1.0
+
+        phases:
+          - name: build
+            steps:
+              - name: FetchSecrets
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - echo fetching secrets
+              - name: ExecuteBootstrap
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - echo executing bootstrap
+              - name: RemoveSecrets
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - echo removing secrets
 
   # Recipe of the base image + component
   Recipe: {}
