@@ -163,7 +163,15 @@ Resources:
         - Region: !Ref AWS::Region
 
   # Composition of the above elements
-  Pipeline: {}
+  Pipeline:
+    Type: AWS::ImageBuilder::ImagePipeline
+    Properties:
+      Name: !Sub "${AWS::StackName}-Pipeline"
+      DistributionConfigurationArn: !Ref Distribution
+      ImageRecipeArn: !Ref Recipe
+      InfrastructureConfigurationArn: !Ref Infrastructure
+      # TODO add repeating schedule top level parameter
+      # Schedule: {}
 
   # Topic for the pipeline to notify
   PipelineTopic: {}
