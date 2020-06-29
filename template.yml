@@ -101,7 +101,7 @@ Resources:
       Name: !Sub "${AWS::StackName}-Recipe"
       Components:
         - ComponentArn: !Ref Component
-      ParentImage: !Ref BaseAMi
+      ParentImage: !Ref BaseAmi
       Version: "0.1.0"
 
   # Publicly routable subnet (route table 0.0.0.0/0 -> igw) in a vpc
