@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
 
 Parameters:
   BaseAmi:
@@ -208,7 +209,28 @@ Resources:
     Type: AWS::SNS::Topic
     Properties: {}
   # Lambda that receives notifications from the pipeline sns topic
-  BuiltLambda: {}
+  BuiltLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs12.x
+      Events:
+        ImagePipeline:
+          Type: SNS
+          Properties:
+            Topic: !Ref PipelineTopic
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt OutputTopic.TopicName
+        - Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Action:
+              - ssm:PutParameter
+            Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${OutputParameter}"
+      CodeUri: src/
+      Handler: index.handler
+
   # Output parameter that is updated for builds from the pipeline
   OutputParameter:
     Type: AWS::SSM::Parameter
