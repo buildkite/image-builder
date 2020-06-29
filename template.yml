@@ -21,6 +21,11 @@ Parameters:
     Type: String
     Description: Instance type for the Image Builder instances.
 
+  ScheduleExpression:
+    Type: String
+    Description: "cron expression for when to run image builds, defaults to nightly at midnight."
+    Default: "0 0 0 1/1 * ? *"
+
 Conditions:
   HasSecrets:
     !Not [ !Equals [ !Ref SecretsBucket, "" ]]
@@ -170,8 +175,9 @@ Resources:
       DistributionConfigurationArn: !Ref Distribution
       ImageRecipeArn: !Ref Recipe
       InfrastructureConfigurationArn: !Ref Infrastructure
-      # TODO add repeating schedule top level parameter
-      # Schedule: {}
+      Schedule:
+        PipelineExecutionStartCondition: EXPRESSION_MATCH_ONLY
+        ScheduleExpression: !Ref ScheduleExpression
 
   # Topic for the pipeline to notify
   PipelineTopic: {}
