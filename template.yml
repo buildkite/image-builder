@@ -230,6 +230,10 @@ Resources:
             Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${OutputParameter}"
       CodeUri: src/
       Handler: index.handler
+      Environment:
+        Variables:
+          OUTPUT_PARAMETER: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${OutputParameter}"
+          OUTPUT_TOPIC: !Ref OutputTopic
 
   # Output parameter that is updated for builds from the pipeline
   OutputParameter:
