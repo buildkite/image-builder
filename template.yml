@@ -210,7 +210,14 @@ Resources:
   # Lambda that receives notifications from the pipeline sns topic
   BuiltLambda: {}
   # Output parameter that is updated for builds from the pipeline
-  OutputParameter: {}
+  OutputParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /${AWS::StackName}/output
+      Type: String
+      DataType: aws:ec2:image
+      # TODO updating this stack will overwrite the most recent parameter value!
+      Value: ""
   # Output topic that is notified for each modification to the output parameter
   OutputTopic:
     Type: AWS::SNS::Topic
