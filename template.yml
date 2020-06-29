@@ -204,12 +204,20 @@ Resources:
         ScheduleExpression: !Ref ScheduleExpression
 
   # Topic for the pipeline to notify
-  PipelineTopic: {}
+  PipelineTopic:
+    Type: AWS::SNS::Topic
+    Properties: {}
   # Lambda that receives notifications from the pipeline sns topic
   BuiltLambda: {}
   # Output parameter that is updated for builds from the pipeline
   OutputParameter: {}
   # Output topic that is notified for each modification to the output parameter
-  OutputTopic: {}
+  OutputTopic:
+    Type: AWS::SNS::Topic
+    Properties: {}
 
-Outputs: {}
+Outputs:
+  Parameter:
+    Value: !Ref OutputParameter
+  Topic:
+    Value: !Ref OutputTopic
