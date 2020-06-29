@@ -109,14 +109,14 @@ Resources:
     Properties:
       CidrBlock: 10.0.0.0/16
       Tags:
-        - Key: Name
-          Value: !Ref AWS::StackName
+      - Key: Name
+        Value: !Ref AWS::StackName
   Gateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
-        - Key: Name
-          Value: !Ref AWS::StackName
+      - Key: Name
+        Value: !Ref AWS::StackName
   GatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
@@ -135,17 +135,26 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref Vpc
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
   SubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
   PublicWildcardRoute:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref Gateway
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
