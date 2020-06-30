@@ -6,7 +6,7 @@ exports.handler = async (event) => {
     event.Records.forEach(record => {
         let message = JSON.parse(record.Sns.Message);
         if (message.state.status != "AVAILABLE") {
-          continue;
+          return;
         }
 
         message.outputResources.amis.forEach(ami => {
@@ -24,7 +24,7 @@ exports.handler = async (event) => {
               Name: ssmParameter,
               Value: image,
               Overwrite: true,
-            });
+            }).promise();
             console.log(`fn=handler at=ssm result=updated`);
           }
 
@@ -36,7 +36,7 @@ exports.handler = async (event) => {
             let snsResult = await sns.publish({
               Message: JSON.stringify({event: "NewImage", NewImage: {ami: image}}),
               TopicArn: topicArn,
-            });
+            }).promise();
             console.log(`fn=handler at=sns result=updated`);
           }
         });

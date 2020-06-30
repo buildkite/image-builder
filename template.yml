@@ -256,7 +256,7 @@ Resources:
             event.Records.forEach(record => {
                 let message = JSON.parse(record.Sns.Message);
                 if (message.state.status != "AVAILABLE") {
-                  continue;
+                  return;
                 }
 
                 message.outputResources.amis.forEach(ami => {
@@ -274,7 +274,7 @@ Resources:
                       Name: ssmParameter,
                       Value: image,
                       Overwrite: true,
-                    });
+                    }).promise();
                     console.log(`fn=handler at=ssm result=updated`);
                   }
 
@@ -286,7 +286,7 @@ Resources:
                     let snsResult = await sns.publish({
                       Message: JSON.stringify({event: "NewImage", NewImage: {ami: image}}),
                       TopicArn: topicArn,
-                    });
+                    }).promise();
                     console.log(`fn=handler at=sns result=updated`);
                   }
                 });
