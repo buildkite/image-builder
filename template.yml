@@ -25,7 +25,7 @@ Parameters:
   ScheduleExpression:
     Type: String
     Description: "cron expression for when to run image builds, defaults to nightly at midnight."
-    Default: "0 0 0 1/1 * ? *"
+    Default: "0 0 * * *"
 
 Conditions:
   HasSecrets:
@@ -203,7 +203,7 @@ Resources:
       InfrastructureConfigurationArn: !Ref Infrastructure
       Schedule:
         PipelineExecutionStartCondition: EXPRESSION_MATCH_ONLY
-        ScheduleExpression: !Ref ScheduleExpression
+        ScheduleExpression: !Sub "cron(${ScheduleExpression})"
 
   # Topic for the pipeline to notify
   PipelineTopic:
