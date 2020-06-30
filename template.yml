@@ -62,6 +62,15 @@ Resources:
                       - !Sub "arn:aws:s3:::${SecretsBucket}/*"
                       - !Sub "arn:aws:s3:::${SecretsBucket}"
             - !Ref AWS::NoValue
+        - PolicyName: S3Logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${LogBucket}/*"
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
