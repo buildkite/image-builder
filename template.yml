@@ -124,7 +124,7 @@ Resources:
                     - name: ExecuteBootstrap
                       action: ExecuteBinary
                       inputs:
-                        path: '{{ build.DownloadBootstrap.inputs[0].destination }}'
+                        path: '{{ build.Download.inputs[0].destination }}'
                     - name: RemoveSecrets
                       action: ExecuteBash
                       inputs:
@@ -151,7 +151,7 @@ Resources:
                     - name: ExecuteBootstrap
                       action: ExecuteBinary
                       inputs:
-                        path: '{{ build.DownloadBootstrap.inputs[0].destination }}'
+                        path: '{{ build.Download.inputs[0].destination }}'
 
   # Recipe of the base image + component
   Recipe:
