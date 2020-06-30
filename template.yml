@@ -17,6 +17,7 @@ Parameters:
   BootstrapScriptUrl:
     Type: String
     Description: AMI customisation script, downloaded and executed as part of the image build.
+    AllowedPattern: "^s3:\\/\\/.+$"
 
   InstanceType:
     Type: String
@@ -62,6 +63,17 @@ Resources:
                       - !Sub "arn:aws:s3:::${SecretsBucket}/*"
                       - !Sub "arn:aws:s3:::${SecretsBucket}"
             - !Ref AWS::NoValue
+        - PolicyName: BootstrapScript
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub
+                    - "arn:aws:s3:::${Path}"
+                    - Path: { "Fn::Select": [ 0, { "Fn::Split": [ "s3://", !Ref BootstrapScriptUrl ] } ] }
         - PolicyName: S3Logs
           PolicyDocument:
             Version: '2012-10-17'
@@ -101,7 +113,7 @@ Resources:
                       action: S3Download
                       inputs:
                         - source: ${BootstrapScriptUrl}
-                          destination: /tmp/bootstrap_ami
+                          destination: /tmp/ami_bootstrap
                         - source: s3://${SecretsBucket}/*
                           description: /tmp/secrets/
                     - name: EnableBootstrap
@@ -130,7 +142,7 @@ Resources:
                       action: S3Download
                       inputs:
                         - source: ${BootstrapScriptUrl}
-                          destination: /tmp/bootstrap_ami
+                          destination: /tmp/ami_bootstrap
                     - name: EnableBootstrap
                       action: ExecuteBash
                       inputs:
