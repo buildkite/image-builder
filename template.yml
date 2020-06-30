@@ -179,6 +179,9 @@ Resources:
       GroupId: !GetAtt SecurityGroup.GroupId
       IpProtocol: -1
       SourceSecurityGroupId: !GetAtt SecurityGroup.GroupId
+  LogBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
   Infrastructure:
     Type: AWS::ImageBuilder::InfrastructureConfiguration
     Properties:
@@ -191,7 +194,13 @@ Resources:
         - !GetAtt SecurityGroup.GroupId
       TerminateInstanceOnFailure: true
       SnsTopicArn: !Ref PipelineTopic
-      Logging: {}
+      # We don't need this but if unset CloudFormation creates it as 
+      # `logging: { s3Logs: {} }` which gives Internal Error when running the
+      # pipeline.
+      Logging:
+        S3Logs:
+          S3BucketName: !Ref LogBucket
+          S3KeyPrefix: !Sub "${AWS::StackName}/"
 
   # Copy to this region only
   Distribution:
