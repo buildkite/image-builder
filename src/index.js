@@ -3,13 +3,13 @@ const AWS = require('aws-sdk');
 exports.handler = async (event) => {
     console.log(`fn=handler event=${JSON.stringify(event)}`);
 
-    event.Records.forEach(record => {
+    for (const record of event.Records) {
         let message = JSON.parse(record.Sns.Message);
         if (message.state.status != "AVAILABLE") {
           return;
         }
 
-        message.outputResources.amis.forEach(ami => {
+        for (const ami of message.outputResources.amis) {
           let image = ami.image;
 
           /*
@@ -39,8 +39,8 @@ exports.handler = async (event) => {
             }).promise();
             console.log(`fn=handler at=sns result=updated`);
           }
-        });
-    });
+        };
+    };
 
     return {
         statusCode: 200,
