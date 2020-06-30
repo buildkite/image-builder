@@ -173,6 +173,12 @@ Resources:
       Tags:
       - Key: Name
         Value: !Ref AWS::StackName
+  SecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt SecurityGroup.GroupId
+      IpProtocol: -1
+      SourceSecurityGroupId: !GetAtt SecurityGroup.GroupId
   Infrastructure:
     Type: AWS::ImageBuilder::InfrastructureConfiguration
     Properties:
