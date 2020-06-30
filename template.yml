@@ -86,29 +86,60 @@ Resources:
       Platform: Linux
       Version: '0.1.0'
       Description: Optionally fetch an S3 SecretsBucket, and execute a bootstrap script.
-      Data: |
-        name: BootstrapAmi
-        description: Optionally fetch an S3 SecretsBucket, and execute a bootstrap script.
-        schemaVersion: 1.0
+      Data:
+        !If
+          - HasSecrets
+          - !Sub |
+              name: BootstrapAmiWithSecrets
+              description: Fetch an S3 SecretsBucket and execute a bootstrap script.
+              schemaVersion: 1.0
 
-        phases:
-          - name: build
-            steps:
-              - name: FetchSecrets
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - echo fetching secrets
-              - name: ExecuteBootstrap
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - echo executing bootstrap
-              - name: RemoveSecrets
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - echo removing secrets
+              phases:
+                - name: build
+                  steps:
+                    - name: Download
+                      action: S3Download
+                      inputs:
+                        - source: ${BootstrapScriptUrl}
+                          destination: /tmp/bootstrap_ami
+                        - source: s3://${SecretsBucket}/*
+                          description: /tmp/secrets/
+                    - name: EnableBootstrap
+                      action: ExecuteBash
+                      inputs:
+                        commands:
+                          - 'chmod +x {{ build.Download.inputs[0].destination }}'
+                    - name: ExecuteBootstrap
+                      action: ExecuteBinary
+                      inputs:
+                        path: '{{ build.DownloadBootstrap.inputs[0].destination }}'
+                    - name: RemoveSecrets
+                      action: ExecuteBash
+                      inputs:
+                        commands:
+                          - 'rm -rf {{ build.Download.inputs[1].destination }}'
+          - !Sub |
+              name: BootstrapAmi
+              description: Execute a bootstrap script.
+              schemaVersion: 1.0
+
+              phases:
+                - name: build
+                  steps:
+                    - name: Download
+                      action: S3Download
+                      inputs:
+                        - source: ${BootstrapScriptUrl}
+                          destination: /tmp/bootstrap_ami
+                    - name: EnableBootstrap
+                      action: ExecuteBash
+                      inputs:
+                        commands:
+                          - 'chmod +x {{ build.Download.inputs[0].destination }}'
+                    - name: ExecuteBootstrap
+                      action: ExecuteBinary
+                      inputs:
+                        path: '{{ build.DownloadBootstrap.inputs[0].destination }}'
 
   # Recipe of the base image + component
   Recipe:
