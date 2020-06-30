@@ -199,6 +199,7 @@ Resources:
       Name: !Sub "${AWS::StackName}-Distribution"
       Distributions:
         - Region: !Ref AWS::Region
+          AmiDistributionConfiguration: {}
 
   # Composition of the above elements
   Pipeline:
