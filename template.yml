@@ -136,6 +136,7 @@ Resources:
       AvailabilityZone: !Select [ 0, { Fn::GetAZs: !Ref AWS::Region } ]
       CidrBlock: 10.0.0.0/24
       VpcId: !Ref Vpc
+      MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
