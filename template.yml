@@ -151,18 +151,12 @@ Resources:
     Properties:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
-      Tags:
-      - Key: Name
-        Value: !Ref AWS::StackName
   PublicWildcardRoute:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref Gateway
-      Tags:
-      - Key: Name
-        Value: !Ref AWS::StackName
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -248,9 +242,10 @@ Resources:
     Properties:
       Name: !Sub /${AWS::StackName}/output
       Type: String
-      DataType: aws:ec2:image
+      # Including DataType seems to prevent CloudFormation creating the parameter
+      # DataType: aws:ec2:image
       # TODO updating this stack will overwrite the most recent parameter value!
-      Value: ""
+      Value: !Ref BaseAmi
   # Output topic that is notified for each modification to the output parameter
   OutputTopic:
     Type: AWS::SNS::Topic
