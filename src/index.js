@@ -22,6 +22,7 @@ exports.handler = async (event) => {
             let ssm = new AWS.SSM({apiVersion: '2014-11-06'});
             let ssmResult = await ssm.putParameter({
               Name: ssmParameter,
+              Type: 'String',
               Value: image,
               Overwrite: true,
             }).promise();
