@@ -170,7 +170,7 @@ Resources:
           - ComponentArn: !Ref BootstrapWithSecretsComponent
           - ComponentArn: !Ref BootstrapComponent
       ParentImage: !Ref BaseAmi
-      Version: "0.1.0"
+      Version: "0.2.0"
 
   # Publicly routable subnet (route table 0.0.0.0/0 -> igw) in a vpc
   Vpc:
