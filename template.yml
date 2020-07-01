@@ -73,7 +73,7 @@ Resources:
                 Resource:
                   - !Sub
                     - "arn:aws:s3:::${Path}"
-                    - Path: { "Fn::Select": [ 0, { "Fn::Split": [ "s3://", !Ref BootstrapScriptUrl ] } ] }
+                    - Path: { "Fn::Select": [ 1, { "Fn::Split": [ "s3://", !Ref BootstrapScriptUrl ] } ] }
         - PolicyName: S3Logs
           PolicyDocument:
             Version: '2012-10-17'
