@@ -91,67 +91,73 @@ Resources:
 
   # Component that optionally syncs the SecretsBucket, downloads and executes
   # the script, and cleans up the secrets bucket cache
-  Component:
+  BootstrapComponent:
     Type: AWS::ImageBuilder::Component
     Properties:
       Name: !Sub "${AWS::StackName}-Bootstrap"
       Platform: Linux
       Version: '0.1.0'
-      Description: Optionally fetch an S3 SecretsBucket, and execute a bootstrap script.
-      Data:
-        !If
-          - HasSecrets
-          - !Sub |
-              name: BootstrapAmiWithSecrets
-              description: Fetch an S3 SecretsBucket and execute a bootstrap script.
-              schemaVersion: 1.0
+      Description: Execute a bootstrap script.
+      Data: !Sub |
+        name: BootstrapAmi
+        description: Execute a bootstrap script.
+        schemaVersion: 1.0
 
-              phases:
-                - name: build
-                  steps:
-                    - name: Download
-                      action: S3Download
-                      inputs:
-                        - source: ${BootstrapScriptUrl}
-                          destination: /tmp/ami_bootstrap
-                        - source: s3://${SecretsBucket}/*
-                          description: /tmp/secrets/
-                    - name: EnableBootstrap
-                      action: ExecuteBash
-                      inputs:
-                        commands:
-                          - 'chmod +x {{ build.Download.inputs[0].destination }}'
-                    - name: ExecuteBootstrap
-                      action: ExecuteBinary
-                      inputs:
-                        path: '{{ build.Download.inputs[0].destination }}'
-                    - name: RemoveSecrets
-                      action: ExecuteBash
-                      inputs:
-                        commands:
-                          - 'rm -rf {{ build.Download.inputs[1].destination }}'
-          - !Sub |
-              name: BootstrapAmi
-              description: Execute a bootstrap script.
-              schemaVersion: 1.0
+        phases:
+          - name: build
+            steps:
+              - name: Download
+                action: S3Download
+                inputs:
+                  - source: ${BootstrapScriptUrl}
+                    destination: /tmp/ami_bootstrap
+              - name: EnableBootstrap
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - 'chmod +x {{ build.Download.inputs[0].destination }}'
+              - name: ExecuteBootstrap
+                action: ExecuteBinary
+                inputs:
+                  path: '{{ build.Download.inputs[0].destination }}'
 
-              phases:
-                - name: build
-                  steps:
-                    - name: Download
-                      action: S3Download
-                      inputs:
-                        - source: ${BootstrapScriptUrl}
-                          destination: /tmp/ami_bootstrap
-                    - name: EnableBootstrap
-                      action: ExecuteBash
-                      inputs:
-                        commands:
-                          - 'chmod +x {{ build.Download.inputs[0].destination }}'
-                    - name: ExecuteBootstrap
-                      action: ExecuteBinary
-                      inputs:
-                        path: '{{ build.Download.inputs[0].destination }}'
+  BootstrapWithSecretsComponent:
+    Type: AWS::ImageBuilder::Component
+    Condition: HasSecrets
+    Properties:
+      Name: !Sub "${AWS::StackName}-BootstrapWithSecrets"
+      Platform: Linux
+      Version: '0.1.0'
+      Description: Download a secrets bucket, execute a bootstrap, remove the secrets.
+      Data: !Sub |
+        name: BootstrapAmiWithSecrets
+        description: Fetch an S3 SecretsBucket and execute a bootstrap script.
+        schemaVersion: 1.0
+
+        phases:
+          - name: build
+            steps:
+              - name: Download
+                action: S3Download
+                inputs:
+                  - source: ${BootstrapScriptUrl}
+                    destination: /tmp/ami_bootstrap
+                  - source: s3://${SecretsBucket}/*
+                    description: /tmp/secrets/
+              - name: EnableBootstrap
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - 'chmod +x {{ build.Download.inputs[0].destination }}'
+              - name: ExecuteBootstrap
+                action: ExecuteBinary
+                inputs:
+                  path: '{{ build.Download.inputs[0].destination }}'
+              - name: RemoveSecrets
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - 'rm -rf {{ build.Download.inputs[1].destination }}'
 
   # Recipe of the base image + component
   Recipe:
@@ -159,7 +165,10 @@ Resources:
     Properties:
       Name: !Sub "${AWS::StackName}-Recipe"
       Components:
-        - ComponentArn: !Ref Component
+        - !If
+          - HasSecrets
+          - ComponentArn: !Ref BootstrapWithSecretsComponent
+          - ComponentArn: !Ref BootstrapComponent
       ParentImage: !Ref BaseAmi
       Version: "0.1.0"
 
