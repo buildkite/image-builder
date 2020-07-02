@@ -158,6 +158,50 @@ Resources:
                 inputs:
                   commands:
                     - 'rm -rf {{ build.Download.inputs[1].destination }}'
+  BootstrapWithSecretsComponent2:
+    Type: AWS::ImageBuilder::Component
+    Condition: HasSecrets
+    Properties:
+      Name: !Sub "${AWS::StackName}-BootstrapWithSecrets"
+      Platform: Linux
+      Version: '0.2.0'
+      Description: Download a secrets bucket, execute a bootstrap, remove the secrets.
+      Data: !Sub |
+        name: BootstrapAmiWithSecrets
+        description: Fetch an S3 SecretsBucket and execute a bootstrap script.
+        schemaVersion: 1.0
+
+        phases:
+          - name: build
+            steps:
+              - name: Prepare
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - mkdir -p /var/lib/buildkite-agent/git-mirrors
+                    - chown buildkite-agent:buildkite-agent /var/lib/buildkite-agent/git-mirrors
+                    - mkdir -p /tmp/secrets
+              - name: Download
+                action: S3Download
+                inputs:
+                  - source: ${BootstrapScriptUrl}
+                    destination: /tmp/ami_bootstrap
+                  - source: s3://${SecretsBucket}/*
+                    destination: /tmp/secrets/
+              - name: EnableBootstrap
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - 'chmod +x {{ build.Download.inputs[0].destination }}'
+              - name: ExecuteBootstrap
+                action: ExecuteBinary
+                inputs:
+                  path: '{{ build.Download.inputs[0].destination }}'
+              - name: RemoveSecrets
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - 'rm -rf {{ build.Download.inputs[1].destination }}'
 
   # Recipe of the base image + component
   Recipe:
@@ -171,6 +215,17 @@ Resources:
           - ComponentArn: !Ref BootstrapComponent
       ParentImage: !Ref BaseAmi
       Version: "0.2.0"
+  Recipe3:
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      Name: !Sub "${AWS::StackName}-Recipe"
+      Components:
+        - !If
+          - HasSecrets
+          - ComponentArn: !Ref BootstrapWithSecretsComponent2
+          - ComponentArn: !Ref BootstrapComponent
+      ParentImage: !Ref BaseAmi
+      Version: "0.3.0"
 
   # Publicly routable subnet (route table 0.0.0.0/0 -> igw) in a vpc
   Vpc:
@@ -278,7 +333,7 @@ Resources:
     Properties:
       Name: !Sub "${AWS::StackName}-Pipeline"
       DistributionConfigurationArn: !Ref Distribution
-      ImageRecipeArn: !Ref Recipe
+      ImageRecipeArn: !Ref Recipe3
       InfrastructureConfigurationArn: !Ref Infrastructure
       Schedule:
         PipelineExecutionStartCondition: EXPRESSION_MATCH_ONLY
