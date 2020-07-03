@@ -23,6 +23,11 @@ Parameters:
     Type: String
     Description: Instance type for the Image Builder instances.
 
+  SubnetId:
+    Type: String # AWS::EC2::Subnet::Id
+    Description: Optional - the subnet to schedule ImageBuilder EC2 instances in. If blank, a simple public subnet VPC is created.
+    Default: ""
+
   ScheduleExpression:
     Type: String
     Description: "cron expression for when to run image builds, defaults to nightly at midnight."
@@ -31,6 +36,9 @@ Parameters:
 Conditions:
   HasSecrets:
     !Not [ !Equals [ !Ref SecretsBucket, "" ]]
+
+  CreateVpc:
+    !Equals [ !Ref SubnetId, "" ]
 
 Resources:
   # IAM role for the image builder instance
@@ -230,6 +238,7 @@ Resources:
   # Publicly routable subnet (route table 0.0.0.0/0 -> igw) in a vpc
   Vpc:
     Type: AWS::EC2::VPC
+    Condition: CreateVpc
     Properties:
       CidrBlock: 10.0.0.0/16
       Tags:
@@ -237,17 +246,20 @@ Resources:
         Value: !Ref AWS::StackName
   Gateway:
     Type: AWS::EC2::InternetGateway
+    Condition: CreateVpc
     Properties:
       Tags:
       - Key: Name
         Value: !Ref AWS::StackName
   GatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
+    Condition: CreateVpc
     Properties:
       InternetGatewayId: !Ref Gateway
       VpcId: !Ref Vpc
   PublicSubnet:
     Type: AWS::EC2::Subnet
+    Condition: CreateVpc
     Properties:
       AvailabilityZone: !Select [ 0, { Fn::GetAZs: !Ref AWS::Region } ]
       CidrBlock: 10.0.0.0/24
@@ -258,6 +270,7 @@ Resources:
           Value: !Ref AWS::StackName
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: CreateVpc
     Properties:
       VpcId: !Ref Vpc
       Tags:
@@ -265,17 +278,20 @@ Resources:
         Value: !Ref AWS::StackName
   SubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateVpc
     Properties:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
   PublicWildcardRoute:
     Type: AWS::EC2::Route
+    Condition: CreateVpc
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref Gateway
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: CreateVpc
     Properties:
       GroupDescription: Enable bootstrap instance egress.
       VpcId: !Ref Vpc
@@ -291,6 +307,7 @@ Resources:
         Value: !Ref AWS::StackName
   SecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
+    Condition: CreateVpc
     Properties:
       GroupId: !GetAtt SecurityGroup.GroupId
       IpProtocol: -1
@@ -305,7 +322,7 @@ Resources:
       InstanceProfileName: !Ref InstanceProfile
       InstanceTypes:
         - !Ref InstanceType
-      SubnetId: !Ref PublicSubnet
+      SubnetId: !If [ CreateVpc, !Ref PublicSubnet, !Ref SubnetId ]
       SecurityGroupIds:
         - !GetAtt SecurityGroup.GroupId
       TerminateInstanceOnFailure: true
