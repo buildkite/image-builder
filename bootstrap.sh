@@ -10,13 +10,13 @@ echo "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6Tb
 echo at=github-host >&2
 
 # Example of file name munging for a git-mirror
-ls -la /var/lib/buildkite-agent/git-mirrors
-ls -la /tmp/secrets
-GIT_SSH_COMMAND='ssh -i /tmp/secrets/id_rsa -o IdentitiesOnly=yes' git clone git@github.com:keithduncan/hello-world-private.git /var/lib/buildkite-agent/git-mirrors/git-github-com-keithduncan-hello-world-private-git
-
+chmod u=rw,go= /tmp/secrets/id_rsa
+repository=/var/lib/buildkite-agent/git-mirrors/git-github-com-keithduncan-hello-world-private-git
+GIT_SSH_COMMAND='ssh -i /tmp/secrets/id_rsa -o IdentitiesOnly=yes' git clone git@github.com:keithduncan/hello-world-private.git "${repository}"
+chown -R buildkite-agent:buildkite-agent "${repository}"
 echo at=cloned >&2
 
 # Verify the repository contents are present
-cat /var/lib/buildkite-agent/git-mirrors/git-github-com-keithduncan-hello-world-private-git/secrets
+cat "${repository}/secrets"
 
 echo at=verified >&2
