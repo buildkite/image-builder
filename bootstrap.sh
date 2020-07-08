@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -xeo pipefail
+
 echo at=init >&2
 
 ls -la ~/.ssh
