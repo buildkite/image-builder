@@ -2,12 +2,13 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
-  BaseAmi:
-    Type: AWS::EC2::Image::Id
+  BaseAmiParameter:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Description: Base AMI to build intermediate images on top of.
-    # TODO this is regional, hard coded us-east-1 for now. Perhaps an SSM
-    # input parameter for this stack is best here?
-    Default: ami-0742dbb6cdf78ac94
+
+  OutputAmiParameter:
+    Type: AWS::SSM::Parameter::Name
+    Description: SSM Parameter to store the latest built image in.
 
   SecretsBucket:
     Type: String
@@ -221,7 +222,7 @@ Resources:
           - HasSecrets
           - ComponentArn: !Ref BootstrapWithSecretsComponent
           - ComponentArn: !Ref BootstrapComponent
-      ParentImage: !Ref BaseAmi
+      ParentImage: !Ref BaseAmiParameter
       Version: "0.2.0"
   Recipe3:
     Type: AWS::ImageBuilder::ImageRecipe
@@ -232,7 +233,7 @@ Resources:
           - HasSecrets
           - ComponentArn: !Ref BootstrapWithSecretsComponent2
           - ComponentArn: !Ref BootstrapComponent
-      ParentImage: !Ref BaseAmi
+      ParentImage: !Ref BaseAmiParameter
       Version: "0.3.0"
 
   # Publicly routable subnet (route table 0.0.0.0/0 -> igw) in a vpc
@@ -379,7 +380,7 @@ Resources:
           - Effect: Allow
             Action:
               - ssm:PutParameter
-            Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${OutputParameter}"
+            Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${OutputAmiParameter}"
       InlineCode: |
         const AWS = require('aws-sdk');
 
@@ -433,26 +434,14 @@ Resources:
       Handler: index.handler
       Environment:
         Variables:
-          OUTPUT_PARAMETER: !Ref OutputParameter
+          OUTPUT_PARAMETER: !Ref OutputAmiParameter
           OUTPUT_TOPIC: !Ref OutputTopic
 
-  # Output parameter that is updated for builds from the pipeline
-  OutputParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub /${AWS::StackName}/output
-      Type: String
-      # Including DataType seems to prevent CloudFormation creating the parameter
-      # DataType: aws:ec2:image
-      # TODO updating this stack will overwrite the most recent parameter value!
-      Value: !Ref BaseAmi
   # Output topic that is notified for each modification to the output parameter
   OutputTopic:
     Type: AWS::SNS::Topic
     Properties: {}
 
 Outputs:
-  Parameter:
-    Value: !Ref OutputParameter
   Topic:
     Value: !Ref OutputTopic
