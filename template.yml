@@ -10,11 +10,6 @@ Parameters:
     Type: AWS::SSM::Parameter::Name
     Description: SSM Parameter to store the latest built image in.
 
-  SecretsBucket:
-    Type: String
-    Description: Optional – Buildkite elastic-ci stack secrets bucket.
-    Default: ""
-
   BootstrapScriptUrl:
     Type: String
     Description: AMI customisation script, downloaded and executed as part of the image build.
@@ -35,9 +30,6 @@ Parameters:
     Default: "0 0 * * *"
 
 Conditions:
-  HasSecrets:
-    !Not [ !Equals [ !Ref SecretsBucket, "" ]]
-
   CreateVpc:
     !Equals [ !Ref SubnetId, "" ]
 
@@ -57,21 +49,6 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder
       Policies:
-        - !If
-            - HasSecrets
-            - PolicyName: SecretsBucketAccess
-              PolicyDocument:
-                Version: '2012-10-17'
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      - s3:Get*
-                      - s3:Get
-                      - s3:List*
-                    Resource:
-                      - !Sub "arn:aws:s3:::${SecretsBucket}/*"
-                      - !Sub "arn:aws:s3:::${SecretsBucket}"
-            - !Ref AWS::NoValue
         - PolicyName: BootstrapScript
           PolicyDocument:
             Version: '2012-10-17'
@@ -98,8 +75,6 @@ Resources:
       Roles:
         - !Ref InstanceRole
 
-  # Component that optionally syncs the SecretsBucket, downloads and executes
-  # the script, and cleans up the secrets bucket cache
   BootstrapComponent:
     Type: AWS::ImageBuilder::Component
     Properties:
@@ -130,111 +105,15 @@ Resources:
                 inputs:
                   path: '{{ build.Download.inputs[0].destination }}'
 
-  BootstrapWithSecretsComponent:
-    Type: AWS::ImageBuilder::Component
-    Condition: HasSecrets
-    Properties:
-      Name: !Sub "${AWS::StackName}-BootstrapWithSecrets"
-      Platform: Linux
-      Version: '0.1.0'
-      Description: Download a secrets bucket, execute a bootstrap, remove the secrets.
-      Data: !Sub |
-        name: BootstrapAmiWithSecrets
-        description: Fetch an S3 SecretsBucket and execute a bootstrap script.
-        schemaVersion: 1.0
-
-        phases:
-          - name: build
-            steps:
-              - name: Download
-                action: S3Download
-                inputs:
-                  - source: ${BootstrapScriptUrl}
-                    destination: /tmp/ami_bootstrap
-                  - source: s3://${SecretsBucket}/*
-                    destination: /tmp/secrets/
-              - name: EnableBootstrap
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - 'chmod +x {{ build.Download.inputs[0].destination }}'
-              - name: ExecuteBootstrap
-                action: ExecuteBinary
-                inputs:
-                  path: '{{ build.Download.inputs[0].destination }}'
-              - name: RemoveSecrets
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - 'rm -rf {{ build.Download.inputs[1].destination }}'
-  BootstrapWithSecretsComponent2:
-    Type: AWS::ImageBuilder::Component
-    Condition: HasSecrets
-    Properties:
-      Name: !Sub "${AWS::StackName}-BootstrapWithSecrets"
-      Platform: Linux
-      Version: '0.2.0'
-      Description: Download a secrets bucket, execute a bootstrap, remove the secrets.
-      Data: !Sub |
-        name: BootstrapAmiWithSecrets
-        description: Fetch an S3 SecretsBucket and execute a bootstrap script.
-        schemaVersion: 1.0
-
-        phases:
-          - name: build
-            steps:
-              - name: Prepare
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - mkdir -p /var/lib/buildkite-agent/git-mirrors
-                    - chown buildkite-agent:buildkite-agent /var/lib/buildkite-agent/git-mirrors
-                    - mkdir -p /tmp/secrets
-              - name: Download
-                action: S3Download
-                inputs:
-                  - source: ${BootstrapScriptUrl}
-                    destination: /tmp/ami_bootstrap
-                  - source: s3://${SecretsBucket}/*
-                    destination: /tmp/secrets/
-              - name: EnableBootstrap
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - 'chmod +x {{ build.Download.inputs[0].destination }}'
-              - name: ExecuteBootstrap
-                action: ExecuteBinary
-                inputs:
-                  path: '{{ build.Download.inputs[0].destination }}'
-              - name: RemoveSecrets
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - 'rm -rf {{ build.Download.inputs[1].destination }}'
-
   # Recipe of the base image + component
   Recipe:
     Type: AWS::ImageBuilder::ImageRecipe
     Properties:
       Name: !Sub "${AWS::StackName}-Recipe"
       Components:
-        - !If
-          - HasSecrets
-          - ComponentArn: !Ref BootstrapWithSecretsComponent
-          - ComponentArn: !Ref BootstrapComponent
+        - ComponentArn: !Ref BootstrapComponent
       ParentImage: !Ref BaseAmiParameter
-      Version: "0.2.0"
-  Recipe3:
-    Type: AWS::ImageBuilder::ImageRecipe
-    Properties:
-      Name: !Sub "${AWS::StackName}-Recipe"
-      Components:
-        - !If
-          - HasSecrets
-          - ComponentArn: !Ref BootstrapWithSecretsComponent2
-          - ComponentArn: !Ref BootstrapComponent
-      ParentImage: !Ref BaseAmiParameter
-      Version: "0.3.0"
+      Version: "0.1.0"
 
   # Publicly routable subnet (route table 0.0.0.0/0 -> igw) in a vpc
   Vpc:
