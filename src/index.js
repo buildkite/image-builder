@@ -18,7 +18,7 @@ exports.handler = async (event) => {
 
           let ssmParameter = process.env.OUTPUT_PARAMETER;
           if (ssmParameter != undefined) {
-            console.log(`fn=handler at=ssm`);
+            console.log(`fn=handler at=ssm name=${ssmParameter} value=${image}`);
             let ssm = new AWS.SSM({apiVersion: '2014-11-06'});
             let ssmResult = await ssm.putParameter({
               Name: ssmParameter,
@@ -26,7 +26,7 @@ exports.handler = async (event) => {
               Value: image,
               Overwrite: true,
             }).promise();
-            console.log(`fn=handler at=ssm result=updated`);
+            console.log(`fn=handler at=ssm ssmResult=${JSON.stringify(ssmResult)}`)
           }
 
           let topicArn = process.env.OUTPUT_TOPIC;
@@ -38,7 +38,7 @@ exports.handler = async (event) => {
               Message: JSON.stringify({event: "NewImage", NewImage: {ami: image}}),
               TopicArn: topicArn,
             }).promise();
-            console.log(`fn=handler at=sns result=updated`);
+            console.log(`fn=handler at=sns snsResult=${JSON.stringify(snsResult)}`);
           }
         };
     };
