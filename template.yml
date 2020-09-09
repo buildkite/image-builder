@@ -24,6 +24,11 @@ Parameters:
     Description: Optional - the subnet to schedule ImageBuilder EC2 instances in. If blank, a simple public subnet VPC is created.
     Default: ""
 
+  SecurityGroupId:
+    Type: String # AWS::EC2::SecurityGroup::Id
+    Description: Optional - required if SubnetId is provided.
+    Default: ""
+
   ScheduleExpression:
     Type: String
     Description: "cron expression for when to run image builds, defaults to nightly at midnight."
@@ -198,7 +203,7 @@ Resources:
         - !Ref InstanceType
       SubnetId: !If [ CreateVpc, !Ref PublicSubnet, !Ref SubnetId ]
       SecurityGroupIds:
-        - !GetAtt SecurityGroup.GroupId
+        - !If [ CreateVpc, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroupId ]
       TerminateInstanceOnFailure: true
       SnsTopicArn: !Ref PipelineTopic
       # We don't need this but if unset CloudFormation creates it as 
