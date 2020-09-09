@@ -79,14 +79,13 @@ Resources:
     Type: AWS::ImageBuilder::Component
     Properties:
       Name: !Sub "${AWS::StackName}-Bootstrap"
-      Platform: Linux
+      Platform: Windows
       Version: '0.1.0'
       Description: Execute a bootstrap script.
       Data: !Sub |
         name: BootstrapAmi
         description: Execute a bootstrap script.
         schemaVersion: 1.0
-
         phases:
           - name: build
             steps:
@@ -94,16 +93,11 @@ Resources:
                 action: S3Download
                 inputs:
                   - source: ${BootstrapScriptUrl}
-                    destination: /tmp/ami_bootstrap
-              - name: EnableBootstrap
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - 'chmod +x {{ build.Download.inputs[0].destination }}'
+                    destination: C:\image-builder.ps1 # there's probably a better place for this?
               - name: ExecuteBootstrap
-                action: ExecuteBinary
+                action: ExecutePowerShell
                 inputs:
-                  path: '{{ build.Download.inputs[0].destination }}'
+                  file: '{{ build.Download.inputs[0].destination }}'
 
   # Recipe of the base image + component
   Recipe:
