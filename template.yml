@@ -224,7 +224,7 @@ Resources:
     Properties:
       Name: !Sub "${AWS::StackName}-Pipeline"
       DistributionConfigurationArn: !Ref Distribution
-      ImageRecipeArn: !Ref Recipe3
+      ImageRecipeArn: !Ref Recipe
       InfrastructureConfigurationArn: !Ref Infrastructure
       Schedule:
         PipelineExecutionStartCondition: EXPRESSION_MATCH_ONLY
