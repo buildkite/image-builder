@@ -5,7 +5,7 @@ exports.handler = async (event) => {
 
     for (const record of event.Records) {
         let message = JSON.parse(record.Sns.Message);
-        if (message.state.status != "AVAILABLE") {
+        if (!message.state || message.state.status != "AVAILABLE") {
           return;
         }
 
