@@ -94,6 +94,11 @@ Resources:
         phases:
           - name: build
             steps:
+              - name: Prepare
+                action: ExecutePowerShell
+                inputs:
+                  commands:
+                    - mkdir C:\buildkite-image-builder
               - name: Download
                 action: S3Download
                 inputs:
@@ -107,7 +112,7 @@ Resources:
                 action: ExecutePowerShell
                 inputs:
                   commands:
-                    - Remove-Item -Recurse C:\buildkite-image-builder
+                    - Remove-Item -Recurse -Force C:\buildkite-image-builder
 
   # Recipe of the base image + component
   Recipe:
