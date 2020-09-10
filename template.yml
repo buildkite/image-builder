@@ -98,11 +98,16 @@ Resources:
                 action: S3Download
                 inputs:
                   - source: ${BootstrapScriptUrl}
-                    destination: C:\image-builder.ps1 # there's probably a better place for this?
+                    destination: C:\buildkite-image-builder\bootstrap.ps1
               - name: ExecuteBootstrap
                 action: ExecutePowerShell
                 inputs:
                   file: '{{ build.Download.inputs[0].destination }}'
+              - name: CleanUp
+                action: ExecutePowerShell
+                inputs:
+                  commands:
+                    - Remove-Item -Recurse C:\buildkite-image-builder
 
   # Recipe of the base image + component
   Recipe:
