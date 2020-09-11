@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# This is more a copy-paste scratch-pad than a script you'd want to run.
+
+aws s3 cp examples/bootstrap.ps1 s3://buildkite-imagebuilder/bootstrap.ps
+
+AMI="ami-01234567890abcdef"
+
+# create a BaseAmiParameter
+aws ssm put-parameter \
+  --name "/image-builder/example/base-ami" \
+  --value "$AMI" \
+  --description "BaseAmiParameter for a buildkite/image-builder stack" \
+  --type String \
+  --data-type aws:ec2:image \
+  --overwrite
+
+# create a placeholder OutputAmiParameter
+aws ssm put-parameter \
+  --name "/image-builder/example/output-ami" \
+  --value "$AMI" \
+  --description "OutputAmiParameter for a buildkite/image-builder stack" \
+  --type String \
+  --overwrite
+
+# create the CloudFormation Stack
+# might need to: go get github.com/cultureamp/cfparams
+aws cloudformation create-stack \
+  --stack-name image-builder-example \
+  --template-body file://template.yml \
+  --parameters "$(cfparams --template template.yml --parameters examples/parameters.yaml --accept-defaults)" \
+  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --disable-rollback
