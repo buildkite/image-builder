@@ -61,7 +61,8 @@ echo at=github-host >&2
 # Example of file name munging for a git-mirror
 chmod u=rw,go= /tmp/secrets/id_rsa
 repository=/var/lib/buildkite-agent/git-mirrors/git-github-com-keithduncan-hello-world-private-git
-GIT_SSH_COMMAND='ssh -i /tmp/secrets/id_rsa -o IdentitiesOnly=yes' git clone git@github.com:keithduncan/hello-world-private.git "${repository}"
+GIT_SSH_COMMAND='ssh -i /tmp/secrets/id_rsa -o IdentitiesOnly=yes' \
+ git clone -v --mirror -- git@github.com:keithduncan/hello-world-private.git "${repository}"
 chown -R buildkite-agent:buildkite-agent "${repository}"
 echo at=cloned >&2
 
