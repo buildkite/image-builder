@@ -32,7 +32,7 @@ Parameters:
   ScheduleExpression:
     Type: String
     Description: "cron expression for when to run image builds, defaults to nightly at midnight."
-    Default: "0 0 * * *"
+    Default: "0 0 * * ? *"
 
 Conditions:
   HasSecrets:
