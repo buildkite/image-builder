@@ -216,7 +216,7 @@ Resources:
         - !If [ CreateVpc, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroupId ]
       TerminateInstanceOnFailure: true
       SnsTopicArn: !Ref PipelineTopic
-      # We don't need this but if unset CloudFormation creates it as 
+      # We don't need this but if unset CloudFormation creates it as
       # `logging: { s3Logs: {} }` which gives Internal Error when running the
       # pipeline.
       Logging:
@@ -253,7 +253,7 @@ Resources:
   BuiltLambda:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs12.x
+      Runtime: nodejs18.x
       Events:
         ImagePipeline:
           Type: SNS
