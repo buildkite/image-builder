@@ -1,0 +1,6 @@
+BaseAmiParameter: /buildkite/image-builder/example/base-ami
+OutputAmiParameter: /buildkite/image-builder/example/output-ami
+BootstrapScriptUrl: s3://your-bucket/buildkite/image-builder/example/bootstrap.ps1
+InstanceType: m5.large
+SubnetId: subnet-0123abcd
+SecurityGroupId: sg-01234567890abcdef

@@ -10,11 +10,6 @@ Parameters:
     Type: AWS::SSM::Parameter::Name
     Description: SSM Parameter to store the latest built image in.
 
-  SecretsBucket:
-    Type: String
-    Description: Optional – Buildkite elastic-ci stack secrets bucket.
-    Default: ""
-
   BootstrapScriptUrl:
     Type: String
     Description: AMI customisation script, downloaded and executed as part of the image build.
@@ -29,15 +24,17 @@ Parameters:
     Description: Optional - the subnet to schedule ImageBuilder EC2 instances in. If blank, a simple public subnet VPC is created.
     Default: ""
 
+  SecurityGroupId:
+    Type: String # AWS::EC2::SecurityGroup::Id
+    Description: Optional - required if SubnetId is provided.
+    Default: ""
+
   ScheduleExpression:
     Type: String
     Description: "cron expression for when to run image builds, defaults to nightly at midnight."
     Default: "0 0 * * ? *"
 
 Conditions:
-  HasSecrets:
-    !Not [ !Equals [ !Ref SecretsBucket, "" ]]
-
   CreateVpc:
     !Equals [ !Ref SubnetId, "" ]
 
@@ -57,21 +54,6 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder
       Policies:
-        - !If
-            - HasSecrets
-            - PolicyName: SecretsBucketAccess
-              PolicyDocument:
-                Version: '2012-10-17'
-                Statement:
-                  - Effect: Allow
-                    Action:
-                      - s3:Get*
-                      - s3:Get
-                      - s3:List*
-                    Resource:
-                      - !Sub "arn:aws:s3:::${SecretsBucket}/*"
-                      - !Sub "arn:aws:s3:::${SecretsBucket}"
-            - !Ref AWS::NoValue
         - PolicyName: BootstrapScript
           PolicyDocument:
             Version: '2012-10-17'
@@ -98,119 +80,39 @@ Resources:
       Roles:
         - !Ref InstanceRole
 
-  # Component that optionally syncs the SecretsBucket, downloads and executes
-  # the script, and cleans up the secrets bucket cache
   BootstrapComponent:
     Type: AWS::ImageBuilder::Component
     Properties:
       Name: !Sub "${AWS::StackName}-Bootstrap"
-      Platform: Linux
+      Platform: Windows
       Version: '0.1.0'
       Description: Execute a bootstrap script.
       Data: !Sub |
         name: BootstrapAmi
         description: Execute a bootstrap script.
         schemaVersion: 1.0
-
-        phases:
-          - name: build
-            steps:
-              - name: Download
-                action: S3Download
-                inputs:
-                  - source: ${BootstrapScriptUrl}
-                    destination: /tmp/ami_bootstrap
-              - name: EnableBootstrap
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - 'chmod +x {{ build.Download.inputs[0].destination }}'
-              - name: ExecuteBootstrap
-                action: ExecuteBinary
-                inputs:
-                  path: '{{ build.Download.inputs[0].destination }}'
-
-  BootstrapWithSecretsComponent:
-    Type: AWS::ImageBuilder::Component
-    Condition: HasSecrets
-    Properties:
-      Name: !Sub "${AWS::StackName}-BootstrapWithSecrets"
-      Platform: Linux
-      Version: '0.1.0'
-      Description: Download a secrets bucket, execute a bootstrap, remove the secrets.
-      Data: !Sub |
-        name: BootstrapAmiWithSecrets
-        description: Fetch an S3 SecretsBucket and execute a bootstrap script.
-        schemaVersion: 1.0
-
-        phases:
-          - name: build
-            steps:
-              - name: Download
-                action: S3Download
-                inputs:
-                  - source: ${BootstrapScriptUrl}
-                    destination: /tmp/ami_bootstrap
-                  - source: s3://${SecretsBucket}/*
-                    destination: /tmp/secrets/
-              - name: EnableBootstrap
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - 'chmod +x {{ build.Download.inputs[0].destination }}'
-              - name: ExecuteBootstrap
-                action: ExecuteBinary
-                inputs:
-                  path: '{{ build.Download.inputs[0].destination }}'
-              - name: RemoveSecrets
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - 'rm -rf {{ build.Download.inputs[1].destination }}'
-  BootstrapWithSecretsComponent2:
-    Type: AWS::ImageBuilder::Component
-    Condition: HasSecrets
-    Properties:
-      Name: !Sub "${AWS::StackName}-BootstrapWithSecrets"
-      Platform: Linux
-      Version: '0.2.0'
-      Description: Download a secrets bucket, execute a bootstrap, remove the secrets.
-      Data: !Sub |
-        name: BootstrapAmiWithSecrets
-        description: Fetch an S3 SecretsBucket and execute a bootstrap script.
-        schemaVersion: 1.0
-
         phases:
           - name: build
             steps:
               - name: Prepare
-                action: ExecuteBash
+                action: ExecutePowerShell
                 inputs:
                   commands:
-                    - mkdir -p /var/lib/buildkite-agent/git-mirrors
-                    - chown buildkite-agent:buildkite-agent /var/lib/buildkite-agent/git-mirrors
-                    - mkdir -p /tmp/secrets
+                    - mkdir C:\buildkite-image-builder
               - name: Download
                 action: S3Download
                 inputs:
                   - source: ${BootstrapScriptUrl}
-                    destination: /tmp/ami_bootstrap
-                  - source: s3://${SecretsBucket}/*
-                    destination: /tmp/secrets/
-              - name: EnableBootstrap
-                action: ExecuteBash
-                inputs:
-                  commands:
-                    - 'chmod +x {{ build.Download.inputs[0].destination }}'
+                    destination: C:\buildkite-image-builder\bootstrap.ps1
               - name: ExecuteBootstrap
-                action: ExecuteBinary
+                action: ExecutePowerShell
                 inputs:
-                  path: '{{ build.Download.inputs[0].destination }}'
-              - name: RemoveSecrets
-                action: ExecuteBash
+                  file: '{{ build.Download.inputs[0].destination }}'
+              - name: CleanUp
+                action: ExecutePowerShell
                 inputs:
                   commands:
-                    - 'rm -rf {{ build.Download.inputs[1].destination }}'
+                    - Remove-Item -Recurse -Force C:\buildkite-image-builder
 
   # Recipe of the base image + component
   Recipe:
@@ -218,23 +120,9 @@ Resources:
     Properties:
       Name: !Sub "${AWS::StackName}-Recipe"
       Components:
-        - !If
-          - HasSecrets
-          - ComponentArn: !Ref BootstrapWithSecretsComponent
-          - ComponentArn: !Ref BootstrapComponent
+        - ComponentArn: !Ref BootstrapComponent
       ParentImage: !Ref BaseAmiParameter
-      Version: "0.2.0"
-  Recipe3:
-    Type: AWS::ImageBuilder::ImageRecipe
-    Properties:
-      Name: !Sub "${AWS::StackName}-Recipe"
-      Components:
-        - !If
-          - HasSecrets
-          - ComponentArn: !Ref BootstrapWithSecretsComponent2
-          - ComponentArn: !Ref BootstrapComponent
-      ParentImage: !Ref BaseAmiParameter
-      Version: "0.3.0"
+      Version: "0.1.0"
 
   # Publicly routable subnet (route table 0.0.0.0/0 -> igw) in a vpc
   Vpc:
@@ -325,10 +213,10 @@ Resources:
         - !Ref InstanceType
       SubnetId: !If [ CreateVpc, !Ref PublicSubnet, !Ref SubnetId ]
       SecurityGroupIds:
-        - !GetAtt SecurityGroup.GroupId
+        - !If [ CreateVpc, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroupId ]
       TerminateInstanceOnFailure: true
       SnsTopicArn: !Ref PipelineTopic
-      # We don't need this but if unset CloudFormation creates it as 
+      # We don't need this but if unset CloudFormation creates it as
       # `logging: { s3Logs: {} }` which gives Internal Error when running the
       # pipeline.
       Logging:
@@ -351,7 +239,7 @@ Resources:
     Properties:
       Name: !Sub "${AWS::StackName}-Pipeline"
       DistributionConfigurationArn: !Ref Distribution
-      ImageRecipeArn: !Ref Recipe3
+      ImageRecipeArn: !Ref Recipe
       InfrastructureConfigurationArn: !Ref Infrastructure
       Schedule:
         PipelineExecutionStartCondition: EXPRESSION_MATCH_ONLY
@@ -365,7 +253,7 @@ Resources:
   BuiltLambda:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs12.x
+      Runtime: nodejs18.x
       Events:
         ImagePipeline:
           Type: SNS
@@ -389,7 +277,7 @@ Resources:
 
             for (const record of event.Records) {
                 let message = JSON.parse(record.Sns.Message);
-                if (message.state.status != "AVAILABLE") {
+                if (!message.state || message.state.status != "AVAILABLE") {
                   return;
                 }
 
@@ -402,7 +290,7 @@ Resources:
 
                   let ssmParameter = process.env.OUTPUT_PARAMETER;
                   if (ssmParameter != undefined) {
-                    console.log(`fn=handler at=ssm`);
+                    console.log(`fn=handler at=ssm name=${ssmParameter} value=${image}`);
                     let ssm = new AWS.SSM({apiVersion: '2014-11-06'});
                     let ssmResult = await ssm.putParameter({
                       Name: ssmParameter,
@@ -410,7 +298,7 @@ Resources:
                       Value: image,
                       Overwrite: true,
                     }).promise();
-                    console.log(`fn=handler at=ssm result=updated`);
+                    console.log(`fn=handler at=ssm ssmResult=${JSON.stringify(ssmResult)}`)
                   }
 
                   let topicArn = process.env.OUTPUT_TOPIC;
@@ -422,7 +310,7 @@ Resources:
                       Message: JSON.stringify({event: "NewImage", NewImage: {ami: image}}),
                       TopicArn: topicArn,
                     }).promise();
-                    console.log(`fn=handler at=sns result=updated`);
+                    console.log(`fn=handler at=sns snsResult=${JSON.stringify(snsResult)}`);
                   }
                 };
             };
